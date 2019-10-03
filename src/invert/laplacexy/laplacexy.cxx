@@ -67,6 +67,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
   } else {
     opt->get("y_bndry", y_bndry, "neumann");
   }
+  opt->get("upper_y_extra_guard", upper_y_extra_guard, false);
 
   // Check value of y_bndry is a supported option
   if (not(
@@ -103,6 +104,10 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
 
   int ind = 0;
   
+  // change upper limit of y-index if this processor has an upper boundary and
+  // upper_y_extra_guard=true
+  const bool y_extra = (localmesh->hasBndryUpperY() and upper_y_extra_guard);
+
   // Y boundaries
   for(RangeIterator it=localmesh->iterateBndryLowerY(); !it.isDone(); it++) {
     indexXY(it.ind, localmesh->ystart-1) = ind++;
@@ -117,15 +122,15 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     }
   }
   for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-    indexXY(it.ind, localmesh->yend+1) = ind++;
+    indexXY(it.ind, localmesh->yend + 1 - y_extra) = ind++;
   }
   if ((not finite_volume) and localmesh->hasBndryUpperY()) {
     // Corner boundary cells
     if (localmesh->firstX()) {
-      indexXY(localmesh->xstart-1, localmesh->yend+1) = ind++;
+      indexXY(localmesh->xstart - 1, localmesh->yend + 1 - y_extra) = ind++;
     }
     if (localmesh->lastX()) {
-      indexXY(localmesh->xend+1, localmesh->yend+1) = ind++;
+      indexXY(localmesh->xend + 1, localmesh->yend + 1 - y_extra) = ind++;
     }
   }
   
@@ -135,8 +140,8 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
   xend = localmesh->xend;
   if(localmesh->lastX())
     xend += 1;
-  for(int x=xstart;x<=xend;x++)
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+  for(int x = xstart; x <= xend; x++)
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       indexXY(x,y) = ind++;
     }
   
@@ -145,8 +150,11 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
   //////////////////////////////////////////////////
   // Allocate storage for preconditioner
 
-  nloc = xend - xstart + 1;                       // Number of X points on this processor
-  nsys = localmesh->yend - localmesh->ystart + 1; // Number of separate Y slices
+  // Number of X points on this processor
+  nloc = xend - xstart + 1;
+
+  // Number of separate Y slices
+  nsys = localmesh->yend - localmesh->ystart + 1 - y_extra;
 
   acoef.reallocate(nsys, nloc);
   bcoef.reallocate(nsys, nloc);
@@ -176,7 +184,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     // X boundaries
     if(localmesh->firstX()) {
       // Lower X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xstart - 1, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
 
@@ -185,7 +193,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
       }
     }else {
       // On another processor
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xstart, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] -= 1;
@@ -194,7 +202,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     }
     if(localmesh->lastX()) {
       // Upper X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xend + 1, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] = 2; // Diagonal sub-matrix
@@ -202,7 +210,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
       }
     }else {
       // On another processor
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xend, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] -= 1;
@@ -223,7 +231,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
         o_nnz[localIndex] += 1;
       }
       {
-        const int localIndex = globalIndex(x, localmesh->yend);
+        const int localIndex = globalIndex(x, localmesh->yend - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         // d_nnz[localIndex] -= 1; // Note: Slightly inefficient
         o_nnz[localIndex] += 1;
@@ -246,13 +254,14 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     }
     for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
       {
-        const int localIndex = globalIndex(it.ind, localmesh->yend + 1);
+        const int localIndex = globalIndex(it.ind,
+                                           localmesh->yend + 1 - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         d_nnz[localIndex] = 2; // Diagonal sub-matrix
         o_nnz[localIndex] = 0; // Off-diagonal sub-matrix
       }
       {
-        const int localIndex = globalIndex(it.ind, localmesh->yend);
+        const int localIndex = globalIndex(it.ind, localmesh->yend - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         d_nnz[localIndex] += 1;
         o_nnz[localIndex] -= 1;
@@ -270,7 +279,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     // X boundaries
     if(localmesh->firstX()) {
       // Lower X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xstart - 1, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
 
@@ -279,7 +288,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
       }
     }else {
       // On another processor
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xstart, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] -= 3;
@@ -288,7 +297,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     }
     if(localmesh->lastX()) {
       // Upper X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xend + 1, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] = 2; // Diagonal sub-matrix
@@ -296,7 +305,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
       }
     }else {
       // On another processor
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         const int localIndex = globalIndex(localmesh->xend, y);
         ASSERT1( (localIndex >= 0) && (localIndex < localN) );
         d_nnz[localIndex] -= 3;
@@ -321,7 +330,7 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
         o_nnz[localIndex] += 3;
       }
       {
-        const int localIndex = globalIndex(x, localmesh->yend);
+        const int localIndex = globalIndex(x, localmesh->yend - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         // d_nnz[localIndex] -= 3; // Note: Slightly inefficient
         o_nnz[localIndex] += 3;
@@ -371,13 +380,14 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
     }
     for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
       {
-        const int localIndex = globalIndex(it.ind, localmesh->yend + 1);
+        const int localIndex = globalIndex(it.ind,
+                                           localmesh->yend + 1 - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         d_nnz[localIndex] = y_bndry_stencil_size; // Diagonal sub-matrix
         o_nnz[localIndex] = 0; // Off-diagonal sub-matrix
       }
       {
-        const int localIndex = globalIndex(it.ind, localmesh->yend);
+        const int localIndex = globalIndex(it.ind, localmesh->yend - y_extra);
         ASSERT1((localIndex >= 0) && (localIndex < localN));
         //d_nnz[localIndex] += 3;
         o_nnz[localIndex] -= 3;
@@ -388,23 +398,27 @@ LaplaceXY::LaplaceXY(Mesh *m, Options *opt, const CELL_LOC loc)
         // special handling for the corners, since we use a free_o3 y-boundary
         // condition just in the corners when y_bndry=="dirichlet"
         if (localmesh->firstX()) {
-          const int localIndex = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          const int localIndex = globalIndex(localmesh->xstart - 1,
+                                             localmesh->yend + 1 - y_extra);
           ASSERT1((localIndex >= 0) && (localIndex < localN));
           d_nnz[localIndex] = 4;
         }
         if (localmesh->lastX()) {
-          const int localIndex = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          const int localIndex = globalIndex(localmesh->xend + 1,
+                                             localmesh->yend + 1 - y_extra);
           ASSERT1((localIndex >= 0) && (localIndex < localN));
           d_nnz[localIndex] = 4;
         }
       } else {
         if (localmesh->firstX()) {
-          const int localIndex = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          const int localIndex = globalIndex(localmesh->xstart - 1,
+                                             localmesh->yend + 1 - y_extra);
           ASSERT1((localIndex >= 0) && (localIndex < localN));
           d_nnz[localIndex] = y_bndry_stencil_size;
         }
         if (localmesh->lastX()) {
-          const int localIndex = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          const int localIndex = globalIndex(localmesh->xend + 1,
+                                             localmesh->yend + 1 - y_extra);
           ASSERT1((localIndex >= 0) && (localIndex < localN));
           d_nnz[localIndex] = y_bndry_stencil_size;
         }
@@ -578,14 +592,18 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
 
   Coordinates *coords = localmesh->getCoordinates(location);
   
+  // change upper limit of y-index if this processor has an upper boundary and
+  // upper_y_extra_guard=true
+  const bool y_extra = (localmesh->hasBndryUpperY() and upper_y_extra_guard);
+
   if (finite_volume) {
     //////////////////////////////////////////////////
     // Set Matrix elements
     //
     // (1/J) d/dx ( J * g11 d/dx ) + (1/J) d/dy ( J * g22 d/dy )
 
-    for(int x=localmesh->xstart; x <= localmesh->xend; x++) {
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+    for(int x = localmesh->xstart; x <= localmesh->xend; x++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         // stencil entries
         PetscScalar c, xm, xp, ym, yp;
 
@@ -686,7 +704,7 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     Field2D coef_dfdy = coords->G2 - DDY(coords->J/coords->g_22)/coords->J;
 
     for(int x = localmesh->xstart; x <= localmesh->xend; x++) {
-      for(int y = localmesh->ystart; y <= localmesh->yend; y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         // stencil entries
         PetscScalar c, xm, xp, ym, yp, xpyp, xpym, xmyp, xmym;
 
@@ -812,7 +830,7 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     if(x_inner_dirichlet) {
 
       // Dirichlet on inner X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         int row = globalIndex(localmesh->xstart-1,y);
         PetscScalar val = 0.5;
         MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
@@ -828,7 +846,7 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     }else {
       
       // Neumann on inner X boundary
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         int row = globalIndex(localmesh->xstart-1,y);
         PetscScalar val = 1.0;
         MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
@@ -846,7 +864,7 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
   if(localmesh->lastX()) {
     // Dirichlet on outer X boundary
     
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       int row = globalIndex(localmesh->xend+1,y);
       PetscScalar val = 0.5;
       MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
@@ -872,11 +890,11 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     }
     
     for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-      int row = globalIndex(it.ind, localmesh->yend+1);
+      int row = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
       PetscScalar val = 0.5;
       MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
       
-      int col = globalIndex(it.ind, localmesh->yend);
+      int col = globalIndex(it.ind, localmesh->yend - y_extra);
       MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
     }
   } else if (y_bndry == "neumann") {
@@ -893,12 +911,12 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     }
     
     for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-      int row = globalIndex(it.ind, localmesh->yend+1);
+      int row = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
       PetscScalar val = 1.0;
       MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
       val = -1.0;
-      int col = globalIndex(it.ind, localmesh->yend);
+      int col = globalIndex(it.ind, localmesh->yend - y_extra);
       MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
     }
   } else if (y_bndry == "free_o3") {
@@ -922,20 +940,20 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
     }
 
     for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-      int row = globalIndex(it.ind, localmesh->yend+1);
+      int row = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
       PetscScalar val = 1.0;
       MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
       val = -3.0;
-      int col = globalIndex(it.ind, localmesh->yend);
+      int col = globalIndex(it.ind, localmesh->yend - y_extra);
       MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
       val = 3.0;
-      col = globalIndex(it.ind, localmesh->yend-1);
+      col = globalIndex(it.ind, localmesh->yend - 1 - y_extra);
       MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
       val = -1.0;
-      col = globalIndex(it.ind, localmesh->yend-2);
+      col = globalIndex(it.ind, localmesh->yend - 2 - y_extra);
       MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
     }
   } else {
@@ -1028,11 +1046,11 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
           // Neumann y-bc
           // f(xs-1,ys-1) = f(xs-1,ys)
           PetscScalar val = 1.0;
-          int row = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          int row = globalIndex(localmesh->xstart - 1, localmesh->yend + 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
           val = -1.0;
-          int col = globalIndex(localmesh->xstart-1, localmesh->yend);
+          int col = globalIndex(localmesh->xstart - 1, localmesh->yend - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
         } else if (y_bndry == "free_o3" or y_bndry == "dirichlet") {
           // 'free_o3' extrapolating boundary condition on Y boundaries
@@ -1041,19 +1059,19 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
           // Use free_o3 at the corners for Dirichlet y-boundaries because we don't know
           // what value to pass for the corner
           PetscScalar val = 1.0;
-          int row = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          int row = globalIndex(localmesh->xstart - 1, localmesh->yend + 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
           val = -3.0;
-          int col = globalIndex(localmesh->xstart-1, localmesh->yend);
+          int col = globalIndex(localmesh->xstart - 1, localmesh->yend - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
           val = 3.0;
-          col = globalIndex(localmesh->xstart-1, localmesh->yend-1);
+          col = globalIndex(localmesh->xstart - 1, localmesh->yend - 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
           val = -1.0;
-          col = globalIndex(localmesh->xstart-1, localmesh->yend-2);
+          col = globalIndex(localmesh->xstart - 1, localmesh->yend - 2 - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
         } else {
           throw BoutException("Unsupported option for y_bndry");
@@ -1064,11 +1082,11 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
           // Neumann y-bc
           // f(xe+1,ys-1) = f(xe+1,ys)
           PetscScalar val = 1.0;
-          int row = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          int row = globalIndex(localmesh->xend + 1, localmesh->yend + 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
           val = -1.0;
-          int col = globalIndex(localmesh->xend+1, localmesh->yend);
+          int col = globalIndex(localmesh->xend + 1, localmesh->yend - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
         } else if (y_bndry == "free_o3" or y_bndry == "dirichlet") {
           // 'free_o3' extrapolating boundary condition on Y boundaries
@@ -1077,19 +1095,19 @@ void LaplaceXY::setCoefs(const Field2D &A, const Field2D &B) {
           // Use free_o3 at the corners for Dirichlet y-boundaries because we don't know
           // what value to pass for the corner
           PetscScalar val = 1.0;
-          int row = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          int row = globalIndex(localmesh->xend + 1, localmesh->yend + 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&row,&val,INSERT_VALUES);
 
           val = -3.0;
-          int col = globalIndex(localmesh->xend+1, localmesh->yend);
+          int col = globalIndex(localmesh->xend + 1, localmesh->yend - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
           val = 3.0;
-          col = globalIndex(localmesh->xend+1, localmesh->yend-1);
+          col = globalIndex(localmesh->xend + 1, localmesh->yend - 1 - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
 
           val = -1.0;
-          col = globalIndex(localmesh->xend+1, localmesh->yend-2);
+          col = globalIndex(localmesh->xend + 1, localmesh->yend - 2 - y_extra);
           MatSetValues(MatA,1,&row,1,&col,&val,INSERT_VALUES);
         } else {
           throw BoutException("Unsupported option for y_bndry");
@@ -1130,7 +1148,7 @@ LaplaceXY::~LaplaceXY() {
 
 const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
   Timer timer("invert");
-  
+
   ASSERT1(rhs.getMesh() == localmesh);
   ASSERT1(x0.getMesh() == localmesh);
   ASSERT1(rhs.getLocation() == location);
@@ -1138,8 +1156,12 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
 
   // Load initial guess x0 into xs and rhs into bs
 
-  for(int x=localmesh->xstart;x<= localmesh->xend;x++) {
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+  // change upper limit of y-index if this processor has an upper boundary and
+  // upper_y_extra_guard=true
+  const bool y_extra = (localmesh->hasBndryUpperY() and upper_y_extra_guard);
+
+  for(int x = localmesh->xstart; x <= localmesh->xend; x++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       int ind = globalIndex(x,y);
       
       PetscScalar val = x0(x,y);
@@ -1155,7 +1177,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
     // compatibility
     if(localmesh->firstX()) {
       if(x_inner_dirichlet) {
-        for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+        for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
           int ind = globalIndex(localmesh->xstart-1,y);
 
           PetscScalar val = x0(localmesh->xstart-1,y);
@@ -1166,7 +1188,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
         }
       }else {
         // Inner X boundary (Neumann)
-        for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+        for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
           int ind = globalIndex(localmesh->xstart-1,y);
 
           PetscScalar val = x0(localmesh->xstart-1,y);
@@ -1180,7 +1202,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
 
     // Outer X boundary (Dirichlet)
     if(localmesh->lastX()) {
-      for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+      for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         int ind = globalIndex(localmesh->xend+1,y);
 
         PetscScalar val = x0(localmesh->xend+1,y);
@@ -1203,12 +1225,13 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
 
       for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-        int ind = globalIndex(it.ind, localmesh->yend+1);
+        int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
 
-        PetscScalar val = x0(it.ind,localmesh->yend+1);
+        PetscScalar val = x0(it.ind, localmesh->yend + 1 - y_extra);
         VecSetValues( xs, 1, &ind, &val, INSERT_VALUES );
 
-        val = 0.5*(x0(it.ind, localmesh->yend+1) + x0(it.ind, localmesh->yend));
+        val = 0.5*(x0(it.ind, localmesh->yend + 1 - y_extra)
+                   + x0(it.ind, localmesh->yend - y_extra));
         VecSetValues( bs, 1, &ind, &val, INSERT_VALUES );
       }
     } else if (y_bndry == "neumann" or y_bndry == "free_o3") {
@@ -1224,9 +1247,9 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
 
       for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-        int ind = globalIndex(it.ind, localmesh->yend+1);
+        int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
 
-        PetscScalar val = x0(it.ind,localmesh->yend+1);
+        PetscScalar val = x0(it.ind,localmesh->yend - 1 - y_extra);
         VecSetValues( xs, 1, &ind, &val, INSERT_VALUES );
 
         val = 0.0;
@@ -1242,7 +1265,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
     // the value in the first boundary cell.
     if (localmesh->firstX()) {
       if (x_inner_dirichlet) {
-        for (int y=localmesh->ystart; y<=localmesh->yend; y++) {
+        for (int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
           int ind = globalIndex(localmesh->xstart-1, y);
 
           // Use the value that would be set by applying the boundary condition to the
@@ -1255,7 +1278,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
         }
        } else {
         // Inner X boundary (Neumann)
-        for(int y=localmesh->ystart; y<=localmesh->yend; y++) {
+        for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
           int ind = globalIndex(localmesh->xstart-1, y);
 
           // Use the value that would be set by applying the boundary condition to the
@@ -1271,7 +1294,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
 
     // Outer X boundary (Dirichlet)
     if (localmesh->lastX()) {
-      for (int y=localmesh->ystart; y<=localmesh->yend; y++) {
+      for (int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
         int ind = globalIndex(localmesh->xend+1, y);
 
         // Use the value that would be set by applying the boundary condition to the
@@ -1298,14 +1321,15 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
 
       for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-        int ind = globalIndex(it.ind, localmesh->yend+1);
+        int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
 
         // Use the value that would be set by applying the boundary condition to the
         // initial guess
-        PetscScalar val = 2.*x0(it.ind,localmesh->yend+1) - x0(it.ind,localmesh->yend);
+        PetscScalar val = 2.*x0(it.ind,localmesh->yend + 1 - y_extra)
+                                - x0(it.ind,localmesh->yend - y_extra);
         VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
-        val = x0(it.ind, localmesh->yend+1);
+        val = x0(it.ind, localmesh->yend + 1 - y_extra);
         VecSetValues(bs, 1, &ind, &val, INSERT_VALUES);
       }
 
@@ -1336,22 +1360,22 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
       if (localmesh->hasBndryUpperY()) {
         if (localmesh->firstX()) {
-          int ind = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xstart - 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = 3.*x0(localmesh->xstart-1, localmesh->yend)
-            - 3.*x0(localmesh->xstart-1, localmesh->yend-1)
-            + x0(localmesh->xstart-1, localmesh->yend-2);
+          PetscScalar val = 3.*x0(localmesh->xstart - 1, localmesh->yend - y_extra)
+            - 3.*x0(localmesh->xstart - 1, localmesh->yend - 1 - y_extra)
+            + x0(localmesh->xstart - 1, localmesh->yend - 2 - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
           VecSetValues(bs, 1, &ind, &val, INSERT_VALUES);
         }
         if (localmesh->lastX()) {
-          int ind = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xend + 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = 3.*x0(localmesh->xend+1, localmesh->yend)
-            - 3.*x0(localmesh->xend+1, localmesh->yend-1)
-            + x0(localmesh->xend+1, localmesh->yend-2);
+          PetscScalar val = 3.*x0(localmesh->xend + 1, localmesh->yend - y_extra)
+            - 3.*x0(localmesh->xend + 1, localmesh->yend - 1 - y_extra)
+            + x0(localmesh->xend + 1, localmesh->yend - 2 - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
@@ -1393,11 +1417,11 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
 
       for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-        int ind = globalIndex(it.ind, localmesh->yend+1);
+        int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
 
         // Use the value that would be set by applying the boundary condition to the
         // initial guess
-        PetscScalar val = x0(it.ind,localmesh->yend);
+        PetscScalar val = x0(it.ind, localmesh->yend - y_extra);
         VecSetValues( xs, 1, &ind, &val, INSERT_VALUES );
 
         val = 0.0;
@@ -1405,18 +1429,18 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
       if (localmesh->hasBndryUpperY()) {
         if (localmesh->firstX()) {
-          int ind = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xstart - 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = x0(localmesh->xstart-1, localmesh->yend);
+          PetscScalar val = x0(localmesh->xstart - 1, localmesh->yend - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
           VecSetValues(bs, 1, &ind, &val, INSERT_VALUES);
         }
         if (localmesh->lastX()) {
-          int ind = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xend + 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = x0(localmesh->xend+1, localmesh->yend);
+          PetscScalar val = x0(localmesh->xend + 1, localmesh->yend - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
@@ -1463,12 +1487,13 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
 
       for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-        int ind = globalIndex(it.ind, localmesh->yend+1);
+        int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
 
         // Use the value that would be set by applying the boundary condition to the
         // initial guess
-        PetscScalar val = 3.*x0(it.ind, localmesh->yend)
-          - 3.*x0(it.ind, localmesh->yend-1) + x0(it.ind, localmesh->yend-2);
+        PetscScalar val = 3.*x0(it.ind, localmesh->yend - y_extra)
+          - 3.*x0(it.ind, localmesh->yend - 1 - y_extra)
+          + x0(it.ind, localmesh->yend - 2 - y_extra);
         VecSetValues( xs, 1, &ind, &val, INSERT_VALUES );
 
         val = 0.0;
@@ -1476,22 +1501,22 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
       }
       if (localmesh->hasBndryUpperY()) {
         if (localmesh->firstX()) {
-          int ind = globalIndex(localmesh->xstart-1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xstart - 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = 3.*x0(localmesh->xstart-1, localmesh->yend)
-            - 3.*x0(localmesh->xstart-1, localmesh->yend-1)
-            + x0(localmesh->xstart-1, localmesh->yend-2);
+          PetscScalar val = 3.*x0(localmesh->xstart - 1, localmesh->yend - y_extra)
+            - 3.*x0(localmesh->xstart - 1, localmesh->yend - 1 - y_extra)
+            + x0(localmesh->xstart - 1, localmesh->yend - 2 - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
           VecSetValues(bs, 1, &ind, &val, INSERT_VALUES);
         }
         if (localmesh->lastX()) {
-          int ind = globalIndex(localmesh->xend+1, localmesh->yend+1);
+          int ind = globalIndex(localmesh->xend + 1, localmesh->yend + 1 - y_extra);
 
-          PetscScalar val = 3.*x0(localmesh->xend+1, localmesh->yend)
-            - 3.*x0(localmesh->xend+1, localmesh->yend-1)
-            + x0(localmesh->xend+1, localmesh->yend-2);
+          PetscScalar val = 3.*x0(localmesh->xend + 1, localmesh->yend - y_extra)
+            - 3.*x0(localmesh->xend + 1, localmesh->yend - 1 - y_extra)
+            + x0(localmesh->xend + 1, localmesh->yend - 2 - y_extra);
           VecSetValues(xs, 1, &ind, &val, INSERT_VALUES);
 
           val = 0.0;
@@ -1539,8 +1564,8 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
   result.allocate();
   result.setLocation(location);
   
-  for(int x=localmesh->xstart;x<= localmesh->xend;x++) {
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+  for(int x = localmesh->xstart; x <= localmesh->xend; x++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       int ind = globalIndex(x,y);
       
       PetscScalar val;
@@ -1551,7 +1576,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
   
   // Inner X boundary
   if(localmesh->firstX()) {
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       int ind = globalIndex(localmesh->xstart-1,y);
       PetscScalar val;
       VecGetValues(xs, 1, &ind, &val );
@@ -1562,7 +1587,7 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
 
   // Outer X boundary
   if(localmesh->lastX()) {
-    for(int y=localmesh->ystart;y<=localmesh->yend;y++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       int ind = globalIndex(localmesh->xend+1,y);
       PetscScalar val;
       VecGetValues(xs, 1, &ind, &val );
@@ -1582,12 +1607,29 @@ const Field2D LaplaceXY::solve(const Field2D &rhs, const Field2D &x0) {
   
   // Upper Y boundary
   for(RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
-    int ind = globalIndex(it.ind, localmesh->yend+1);
+    int ind = globalIndex(it.ind, localmesh->yend + 1 - y_extra);
     PetscScalar val;
     VecGetValues(xs, 1, &ind, &val );
-    for(int y=localmesh->yend+1;y<localmesh->LocalNy;y++)
+    for(int y = localmesh->yend + 1 - y_extra; y < localmesh->LocalNy; y++)
       result(it.ind, y) = val;
   }
+
+#if CHECK > 0
+  if (y_extra) {
+    // Fill the upper boundary cells that are skipped when
+    // upper_y_extra_guard=true so that checkData doesn't throw if a
+    // y-derivative is taken of the result
+    for (RangeIterator it=localmesh->iterateBndryUpperY(); !it.isDone(); it++) {
+      result(it.ind, localmesh->yend+1) = 1.e40;
+    }
+    if (localmesh->firstX()) {
+      result(localmesh->xstart - 1, localmesh->yend) = 1.e40;
+    }
+    if (localmesh->lastX()) {
+      result(localmesh->xend + 1, localmesh->yend) = 1.e40;
+    }
+  }
+#endif
   
   return result;
 }
@@ -1601,6 +1643,8 @@ int LaplaceXY::precon(Vec input, Vec result) {
   
   // Starting index
   int ind = -1;
+
+  const bool y_extra = (localmesh->hasBndryUpperY() and upper_y_extra_guard);
   
   RangeIterator itdwn=localmesh->iterateBndryLowerY();
   if(!itdwn.isDone()) {
@@ -1617,7 +1661,7 @@ int LaplaceXY::precon(Vec input, Vec result) {
   if(!itup.isDone()) {
     if(ind == -1) {
       // No lower boundary
-      ind = globalIndex(itup.ind, localmesh->yend+1);
+      ind = globalIndex(itup.ind, localmesh->yend + 1 - y_extra);
     }
     for(; !itup.isDone(); itup++) {
       PetscScalar val;
@@ -1633,8 +1677,8 @@ int LaplaceXY::precon(Vec input, Vec result) {
     
   int ind0 = ind;
   // Load vector x into bvals array
-  for(int x=xstart;x<=xend;x++) {
-    for(int y=localmesh->ystart; y<=localmesh->yend;y++) {
+  for(int x = xstart; x <= xend; x++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       PetscScalar val;
       VecGetValues(input, 1, &ind, &val );
       bvals(y - localmesh->ystart, x - xstart) = val;
@@ -1647,8 +1691,8 @@ int LaplaceXY::precon(Vec input, Vec result) {
 
   // Save result xvals into y array
   ind = ind0;
-  for(int x=xstart;x<=xend;x++) {
-    for(int y=localmesh->ystart; y<=localmesh->yend;y++) {
+  for(int x = xstart; x<= xend; x++) {
+    for(int y = localmesh->ystart; y <= localmesh->yend - y_extra; y++) {
       PetscScalar val = xvals(y - localmesh->ystart, x - xstart);
       VecSetValues(result, 1, &ind, &val, INSERT_VALUES );
       ind++;
@@ -1666,6 +1710,10 @@ int LaplaceXY::localSize() {
   // Bulk of points
   int nx = localmesh->xend - localmesh->xstart + 1;
   int ny = localmesh->yend - localmesh->ystart + 1;
+
+  if (upper_y_extra_guard and localmesh->hasBndryUpperY()) {
+    ny--;
+  }
   
   int n = nx * ny;  
   

@@ -95,6 +95,8 @@ do
     fi
 done
 
+make
+
 cd tests/integrated/test-initial
 ./runtest
 

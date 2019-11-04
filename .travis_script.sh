@@ -97,6 +97,8 @@ done
 
 make
 
+export OMPI_MCA_orte_base_help_aggregate=0
+
 cd tests/integrated/test-initial
 ./runtest
 

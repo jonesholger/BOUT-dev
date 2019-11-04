@@ -41,7 +41,7 @@ Field2D interpolateAndExtrapolate(const Field2D& f, CELL_LOC location,
   // not f's so we don't want to change f.
   result.allocate();
   localmesh->communicate(result);
-
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   // Extrapolate into boundaries (if requested) so that differential geometry
   // terms can be interpolated if necessary
   // Note: cannot use applyBoundary("free_o3") here because applyBoundary()
@@ -50,6 +50,7 @@ Field2D interpolateAndExtrapolate(const Field2D& f, CELL_LOC location,
   // Also, here we interpolate for the boundary points at xstart/ystart and
   // (xend+1)/(yend+1) instead of extrapolating.
   for (auto& bndry : localmesh->getBoundaries()) {
+    output << "boundary: " << bndry->label << "\n";
     if ((extrapolate_x and bndry->bx != 0) or (extrapolate_y and bndry->by != 0)) {
       int extrap_start = 0;
       if (not no_extra_interpolate) {
@@ -234,19 +235,25 @@ Coordinates::Coordinates(Mesh* mesh, Options* options)
   }
 
   mesh->get(dy, "dy", 1.0);
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   dy = interpolateAndExtrapolate(dy, location, extrapolate_x, extrapolate_y);
 
   nz = mesh->LocalNz;
 
+  output << __FILE__ << ":" << __LINE__ << std::endl;
+
   {
     auto& options = Options::root();
+    output << __FILE__ << ":" << __LINE__ << std::endl;
     const bool has_zperiod = options.isSet("zperiod");
+    output << __FILE__ << ":" << __LINE__ << std::endl;
     const auto zmin = has_zperiod ? 0.0 : options["ZMIN"].withDefault(0.0);
+    output << __FILE__ << ":" << __LINE__ << std::endl;
     const auto zmax = has_zperiod ? 1.0 / options["zperiod"].withDefault(1.0)
                                   : options["ZMAX"].withDefault(1.0);
-
+    output << __FILE__ << ":" << __LINE__ << std::endl;
     const auto default_dz = (zmax - zmin) * TWOPI / nz;
-
+    output << __FILE__ << ":" << __LINE__ << std::endl;
     mesh->get(dz, "dz", default_dz);
   }
 

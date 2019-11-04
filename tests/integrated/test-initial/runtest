@@ -176,7 +176,7 @@ shell_safe("make > make.log")
 
 nprocs = [1, 2, 3, 4]
 for nproc in nprocs:
-    launch_safe(cmd, nproc=nproc)
+    launch_safe(cmd, nproc=nproc, verbose=True)
 
     # Collect the coordinate arrays separately
     x = collect("var_x", xguards=True, yguards=True, path=datadir, info=False)

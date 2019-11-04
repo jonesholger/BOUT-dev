@@ -30,7 +30,9 @@ Field2D interpolateAndExtrapolate(const Field2D& f, CELL_LOC location,
     bool extrapolate_x = true, bool extrapolate_y = true,
     bool no_extra_interpolate = false) {
 
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   Mesh* localmesh = f.getMesh();
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   Field2D result = interp_to(f, location, "RGN_NOBNDRY");
   // Ensure result's data is unique. Otherwise result might be a duplicate of
   // f (if no interpolation is needed, e.g. if interpolation is in the
@@ -40,6 +42,7 @@ Field2D interpolateAndExtrapolate(const Field2D& f, CELL_LOC location,
   // communicate f. We will sort out result's boundary guard cells below, but
   // not f's so we don't want to change f.
   result.allocate();
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   localmesh->communicate(result);
   output << __FILE__ << ":" << __LINE__ << std::endl;
   // Extrapolate into boundaries (if requested) so that differential geometry

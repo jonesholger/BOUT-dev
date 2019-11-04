@@ -72,10 +72,11 @@ const T interp_to(const T& var, CELL_LOC loc, const std::string region = "RGN_AL
   }
 
   if (var.getLocation() == loc) {
+    output << __FILE__ << ":" << __LINE__ << " no interpolation\n";
     // Nothing to do - just return unchanged
     return var;
   }
-
+  output << __FILE__ << ":" << __LINE__ << std::endl;
   // NOTE: invalidateGuards() is called in Field3D::alloctate() if the data
   // block is not already allocated, so will be called here if
   // region==RGN_NOBNDRY

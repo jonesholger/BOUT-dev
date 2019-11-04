@@ -19,9 +19,15 @@ void create_and_dump(Field3D& field, const char* name) {
 
 int main(int argc, char** argv) {
 
+  std::cout << "0\n";
+
   BoutInitialise(argc, argv);
 
+  std::cout << "1\n";
+
   const auto& sections = Options::root().subsections();
+
+  std::cout << "2\n";
 
   // We need a vector of Fields because:
   //   1) we don't know at compile time how many we need
@@ -32,17 +38,24 @@ int main(int argc, char** argv) {
   // too large as it includes sections we don't want, but that's ok
   std::vector<Field3D> fields(sections.size());
 
+  std::cout << "3\n";
+
   for (const auto& section : sections) {
     if (!section.second->isSet("function")) {
       continue;
     }
+    std::cout << section.first << "\n";
     fields.emplace_back();
     auto& field = fields.back();
     create_and_dump(field, section.first.c_str());
     dump.write();
   }
 
+  std::cout << "4\n";
+
   BoutFinalise();
+
+  std::cout << "5\n";
 
   return 0;
 }

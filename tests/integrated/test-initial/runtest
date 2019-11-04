@@ -176,14 +176,7 @@ shell_safe("make > make.log")
 
 nprocs = [1, 2, 3, 4]
 for nproc in nprocs:
-    status, out = launch_safe(cmd, nproc=nproc, pipe=True, verbose=True)
-    with open("run.log.{}".format(nproc), "w") as f:
-        f.write(out)
-
-    if status != 0:
-        print("=> Could not run test")
-        print(status)
-        exit(status)
+    launch_safe(cmd, nproc=nproc)
 
     # Collect the coordinate arrays separately
     x = collect("var_x", xguards=True, yguards=True, path=datadir, info=False)

@@ -21,8 +21,10 @@ for directory,nproc in test_directories:
         command = 'test-laplace3d -d ' + directory + ' > ' + directory + '/output.log 2>&1'
         print('running on', nproc, 'processors:', command)
         launch_safe(command, nproc=nproc)
+        shell_safe('cat ' + directory + '/output.log')
     except RuntimeError:
         print(directory + ' run crashed')
+        shell_safe('cat ' + directory + '/output.log')
         success = False
         continue
 

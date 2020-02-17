@@ -18,12 +18,14 @@ shell_safe('make')
 success = True
 for directory,nproc in test_directories:
     try:
-        command = 'test-laplace3d -d ' + directory + ' > ' + directory + '/output.log 2>&1'
+        command = 'test-laplace3d -d ' + directory
         print('running on', nproc, 'processors:', command)
         launch_safe(command, nproc=nproc)
     except RuntimeError:
         print(directory + ' run crashed')
         success = False
+        error_max = collect('error_max', path=directory, info=False)
+        print('crashed but error_max =', error_max)
         continue
 
     error_max = collect('error_max', path=directory, info=False)

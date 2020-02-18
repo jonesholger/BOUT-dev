@@ -46,14 +46,13 @@ PetscLib::~PetscLib() {
 void PetscLib::cleanup() {
   BOUT_OMP(critical(PetscLib))
   {
-    if(count == 0)
-      return; // Either never initialised, or already cleaned up
+    if(count > 0) {
+      output << "Finalising PETSc. Warning: Instances of PetscLib still exist.\n";
+      PetscLogEventEnd(USER_EVENT,0,0,0,0);
+      PetscFinalize();
 
-    output << "Finalising PETSc. Warning: Instances of PetscLib still exist.\n";
-    PetscLogEventEnd(USER_EVENT,0,0,0,0);
-    PetscFinalize();
-
-    count = 0; // ensure that finalise is not called again later
+      count = 0; // ensure that finalise is not called again later
+    }
   }
 }
 

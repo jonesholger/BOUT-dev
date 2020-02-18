@@ -24,6 +24,7 @@ aliases:
 addons:
   apt:
     packages: &standard_packages
+    - valgrind
     - libfftw3-dev
     - libnetcdf-dev
     - libnetcdf-c++4-dev
@@ -92,11 +93,6 @@ matrix:
       - cmake .. -DUSE_PETSC=ON -DUSE_SLEPC=ON -DUSE_SUNDIALS=ON -DSUNDIALS_ROOT="$HOME/local" -DENABLE_OPENMP=ON
       - cmake --build . --target build-check -j 2
       - cmake --build . --target check
-    addons:
-      apt:
-        packages:
-          - valgrind
-          - *standard_packages
 #CLANG
   - env:
       - *default_env

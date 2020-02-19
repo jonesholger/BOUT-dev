@@ -732,7 +732,6 @@ if(PACKAGE_TESTS)
   add_custom_target(build-check)
   add_dependencies(build-check build-check-unit-tests build-check-integrated-tests)
 
-  add_subdirectory(tests/unit EXCLUDE_FROM_ALL)
   add_subdirectory(tests/integrated EXCLUDE_FROM_ALL)
 
   # Targets for running the tests

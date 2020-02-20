@@ -730,7 +730,7 @@ if(PACKAGE_TESTS)
 
   # Build all the tests
   add_custom_target(build-check)
-  add_dependencies(build-check build-check-unit-tests build-check-integrated-tests)
+  add_dependencies(build-check build-check-integrated-tests)
 
   add_subdirectory(tests/integrated EXCLUDE_FROM_ALL)
 
@@ -745,7 +745,7 @@ if(PACKAGE_TESTS)
 
   # Run all the tests
   add_custom_target(check)
-  add_dependencies(check check-unit-tests check-integrated-tests)
+  add_dependencies(check check-integrated-tests)
 endif()
 
 ##################################################

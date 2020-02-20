@@ -1,1 +1,5 @@
 add_subdirectory(test-laplace-petsc3d)
+add_subdirectory(test-laplace-petsc3d-2)
+add_subdirectory(test-laplace-petsc3d-3)
+add_subdirectory(test-laplace-petsc3d-4)
+add_subdirectory(test-laplace-petsc3d-5)

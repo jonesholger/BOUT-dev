@@ -66,19 +66,6 @@ matrix:
           - *standard_packages
     env:
       - *default_env
-      - CONFIGURE_OPTIONS="--enable-sigfpe --enable-debug --with-petsc --with-slepc --with-sundials=$HOME/local"
-      - CC=gcc-7 CXX=g++-7
-      - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-  - env:
-      - *default_env
-      - CONFIGURE_OPTIONS="--enable-shared --with-petsc --with-slepc --with-sundials=$HOME/local"
-      - SCRIPT_FLAGS="-uim -t python -t shared"
-  - env:
-      - *default_env
-      - CONFIGURE_OPTIONS="--enable-shared --with-petsc --with-slepc --with-sundials=$HOME/local"
-      - SCRIPT_FLAGS="-uim5t python"
-  - env:
-      - *default_env
       - CONFIGURE_OPTIONS="--enable-openmp --with-petsc --with-slepc --with-sundials=$HOME/local"
       - OMP_NUM_THREADS=2
 #CMAKE

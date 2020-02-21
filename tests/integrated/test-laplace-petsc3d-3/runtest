@@ -18,7 +18,7 @@ shell_safe('make')
 success = True
 for directory,nproc in test_directories:
     try:
-        command = 'test-laplace3d -d ' + directory
+        command = 'test-laplace3d -d ' + directory + ' -ksp_monitor'
         print('running on', nproc, 'processors:', command)
         launch_safe(command, nproc=nproc)
     except RuntimeError:

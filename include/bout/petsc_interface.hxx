@@ -222,7 +222,7 @@ private:
     numOffDiagonal = std::vector<int>(size(), 0);
 
     // Set initial guess for number of on-diagonal elements
-    BOUT_FOR(i, regionAll) {
+    BOUT_FOR_SERIAL(i, regionAll) {
       numDiagonal[getGlobal(i) - globalStart] = stencils.getStencilSize(i);
     }
 

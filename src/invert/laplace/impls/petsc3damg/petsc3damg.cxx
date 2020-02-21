@@ -295,8 +295,6 @@ void LaplacePetsc3dAmg::updateMatrix3D() {
     // Index is called l for "location". It is not called i so as to
     // avoid confusing it with the x-index.
 
-BOUT_OMP(critical(laplace3d))
-{
     // Calculate coefficients for the terms in the differential operator
     BoutReal C_df_dx = coords->G1[l], C_df_dz = coords->G3[l];
     if (issetD) {
@@ -342,6 +340,8 @@ BOUT_OMP(critical(laplace3d))
     C_d2f_dxdz /= 4 * coords->dx[l] * coords->dz;
 
     operator3D(l, l) = -2 * (C_d2f_dx2 + C_d2f_dy2 + C_d2f_dz2) + A[l];
+BOUT_OMP(critical(laplace3d))
+{
     operator3D(l, l.xp()) = C_df_dx + C_d2f_dx2;
     operator3D(l, l.xm()) = -C_df_dx + C_d2f_dx2;
     operator3D(l, l.zp()) = C_df_dz + C_d2f_dz2;

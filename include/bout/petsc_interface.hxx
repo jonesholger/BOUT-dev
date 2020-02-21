@@ -514,19 +514,25 @@ public:
 
   /// Copy constructor
   PetscMatrix(const PetscMatrix<T>& m) : matrix(new Mat(), MatrixDeleter()), pt(m.pt) {
+BOUT_OMP(critical(MatrixCopy))
+{
     MatDuplicate(*m.matrix, MAT_COPY_VALUES, matrix.get());
     indexConverter = m.indexConverter;
     yoffset = m.yoffset;
     initialised = m.initialised;
+}
   }
 
   /// Move constrcutor
   PetscMatrix(PetscMatrix<T>&& m) : pt(m.pt) {
+BOUT_OMP(critical(MatrixMove))
+{
     matrix = m.matrix;
     indexConverter = m.indexConverter;
     yoffset = m.yoffset;
     initialised = m.initialised;
     m.initialised = false;
+}
   }
 
   // Construct a matrix capable of operating on the specified field,
@@ -589,6 +595,8 @@ public:
     Element(Mat* matrix, PetscInt row, PetscInt col, std::vector<PetscInt> p = {},
             std::vector<BoutReal> w = {})
         : petscMatrix(matrix), petscRow(row), petscCol(col), positions(p), weights(w) {
+BOUT_OMP(critical(MatrixElementConstructor))
+{
       ASSERT2(positions.size() == weights.size());
       if (positions.size() == 0) {
         positions = {col};
@@ -602,6 +610,7 @@ public:
       } else {
         value = 0.;
       }
+}
     }
     Element& operator=(Element& other) { return *this = static_cast<BoutReal>(other); }
     Element& operator=(BoutReal val) {
@@ -644,6 +653,10 @@ public:
   Element operator()(const ind_type& index1, const ind_type& index2) {
     const int global1 = indexConverter->getGlobal(index1),
               global2 = indexConverter->getGlobal(index2);
+    std::vector<PetscInt> positions;
+    std::vector<PetscScalar> weights;
+BOUT_OMP(critical(petsciInterfaceMatrixElement))
+{
 #if CHECKLEVEL >= 1
     if (!initialised) {
       throw BoutException("Can not return element of uninitialised matrix");
@@ -653,8 +666,6 @@ public:
       throw BoutException("Request to return invalid matrix element");
     }
 #endif
-    std::vector<PetscInt> positions;
-    std::vector<PetscScalar> weights;
     if (yoffset != 0) {
       ASSERT1(yoffset == index2.y() - index1.y());
       const auto pw = [this, &index1, &index2]() {
@@ -684,6 +695,7 @@ public:
                        return p.weight;
                      });
     }
+}
     return Element(matrix.get(), global1, global2, positions, weights);
   }
 

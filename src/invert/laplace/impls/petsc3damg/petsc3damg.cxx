@@ -279,6 +279,8 @@ void LaplacePetsc3dAmg::updateMatrix3D() {
     // Index is called l for "location". It is not called i so as to
     // avoid confusing it with the x-index.
 
+BOUT_OMP(critical(laplace3d))
+{
     // Calculate coefficients for the terms in the differential operator
     BoutReal C_df_dx = coords->G1[l], C_df_dz = coords->G3[l];
     if (issetD) {
@@ -347,12 +349,15 @@ void LaplacePetsc3dAmg::updateMatrix3D() {
     operator3D.yup(yup)(l, l.yp().zm()) = 0.0;
     operator3D.ydown(ydown)(l, l.ym().zp()) = 0.0;
     operator3D.ydown(ydown)(l, l.ym().zm()) = 0.0;
+}
   }
   operator3D.partialAssemble();
 
   // Must add these (rather than assign) so that elements used in
   // interpolation don't overwrite each other.
   BOUT_FOR(l, indexer->getRegionNobndry()) {
+BOUT_OMP(critical(laplace3d))
+{
     BoutReal C_df_dy = (coords->G2[l] - dJ_dy[l]/coords->J[l]);
     if (issetD) {
       C_df_dy *= D[l];
@@ -401,6 +406,7 @@ void LaplacePetsc3dAmg::updateMatrix3D() {
     operator3D.yup(yup)(l, l.yp().zm()) += -C_d2f_dydz;
     operator3D.ydown(ydown)(l, l.ym().zp()) += -C_d2f_dydz;
     operator3D.ydown(ydown)(l, l.ym().zm()) += C_d2f_dydz;    
+}
   }
   operator3D.assemble();
   MatSetBlockSize(*operator3D.get(), 1);

@@ -122,11 +122,15 @@ LaplacePetsc3dAmg::LaplacePetsc3dAmg(Options *opt, const CELL_LOC loc, Mesh *mes
   BOUT_FOR(i, indexer->getRegionInnerX()) {
     if(inner_boundary_flags & INVERT_AC_GRAD) {
       // Neumann on inner X boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = -1./coords->dx[i]/sqrt(coords->g_11[i]);
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.xp()) = 1./coords->dx[i]/sqrt(coords->g_11[i]);
     } else {
       // Dirichlet on inner X boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 0.5;
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.xp()) = 0.5;
     }
   }
@@ -134,11 +138,15 @@ LaplacePetsc3dAmg::LaplacePetsc3dAmg(Options *opt, const CELL_LOC loc, Mesh *mes
   BOUT_FOR(i, indexer->getRegionOuterX()) {
     if(outer_boundary_flags & INVERT_AC_GRAD) {
       // Neumann on outer X boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 1./coords->dx[i]/sqrt(coords->g_11[i]);
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.xm()) = -1./coords->dx[i]/sqrt(coords->g_11[i]);
     } else {
       // Dirichlet on outer X boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 0.5;
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.xm()) = 0.5;
     }
   }
@@ -146,11 +154,15 @@ LaplacePetsc3dAmg::LaplacePetsc3dAmg(Options *opt, const CELL_LOC loc, Mesh *mes
   BOUT_FOR(i, indexer->getRegionLowerY()) {
     if(lower_boundary_flags & INVERT_AC_GRAD) {
       // Neumann on lower Y boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = -1./coords->dy[i]/sqrt(coords->g_22[i]);
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.yp()) = 1./coords->dy[i]/sqrt(coords->g_22[i]);
     } else {
       // Dirichlet on lower Y boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 0.5;
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.yp()) = 0.5;
     }
   }
@@ -158,11 +170,15 @@ LaplacePetsc3dAmg::LaplacePetsc3dAmg(Options *opt, const CELL_LOC loc, Mesh *mes
   BOUT_FOR(i, indexer->getRegionUpperY()) {
     if(upper_boundary_flags & INVERT_AC_GRAD) {
       // Neumann on upper Y boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 1./coords->dy[i]/sqrt(coords->g_22[i]);
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.ym()) = -1./coords->dy[i]/sqrt(coords->g_22[i]);
     } else {
       // Dirichlet on upper Y boundary
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i) = 0.5;
+      BOUT_OMP(critical(laplace3d))
       operator3D(i, i.ym()) = 0.5;
     }
   }

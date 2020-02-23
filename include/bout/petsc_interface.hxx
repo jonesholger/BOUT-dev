@@ -636,6 +636,13 @@ BOUT_OMP(critical(MatrixElementConstructor))
       std::transform(weights.begin(), weights.end(), std::back_inserter(values),
                      [&val](BoutReal weight) -> PetscScalar { return weight * val; });
       int status;
+      if (petscRow == 2016) {
+        for (auto j : positions) {
+          if (j==2) {
+            output<<"Setting element at ("<<petscRow<<","<<j<<")"<<" mode="<<mode<<endl;
+          }
+        }
+      }
       BOUT_OMP(critical)
       status = MatSetValues(*petscMatrix, 1, &petscRow, positions.size(),
                             positions.data(), values.data(), mode);

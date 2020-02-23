@@ -339,9 +339,9 @@ void LaplacePetsc3dAmg::updateMatrix3D() {
 
     C_d2f_dxdz /= 4 * coords->dx[l] * coords->dz;
 
-    operator3D(l, l) = -2 * (C_d2f_dx2 + C_d2f_dy2 + C_d2f_dz2) + A[l];
 BOUT_OMP(critical(laplace3d))
 {
+    operator3D(l, l) = -2 * (C_d2f_dx2 + C_d2f_dy2 + C_d2f_dz2) + A[l];
     operator3D(l, l.xp()) = C_df_dx + C_d2f_dx2;
     operator3D(l, l.xm()) = -C_df_dx + C_d2f_dx2;
     operator3D(l, l.zp()) = C_df_dz + C_d2f_dz2;

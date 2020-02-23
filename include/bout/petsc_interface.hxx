@@ -550,6 +550,7 @@ BOUT_OMP(critical(MatrixMove))
 
     // If a stencil has been provided, preallocate memory
     if (preallocate && indexConverter->sparsityPatternAvailable()) {
+      output<<"preallocation, i=2016 getNumDiagonal="<<indexConverter->getNumDiagonal()[2016]<<" getNumOffDiagonal="<<indexConverter->getNumOffDiagonal()[2016]<<endl;
       MatMPIAIJSetPreallocation(*matrix, 0, indexConverter->getNumDiagonal().data(), 0,
                                 indexConverter->getNumOffDiagonal().data());
     }
@@ -638,9 +639,7 @@ BOUT_OMP(critical(MatrixElementConstructor))
       int status;
       if (petscRow == 2016) {
         for (auto j : positions) {
-          if (j==2) {
-            output<<"Setting element at ("<<petscRow<<","<<j<<")"<<" mode="<<mode<<endl;
-          }
+          output<<"Setting element at ("<<petscRow<<","<<j<<")"<<" mode="<<mode<<endl;
         }
       }
       BOUT_OMP(critical)

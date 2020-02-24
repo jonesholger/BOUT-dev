@@ -483,6 +483,8 @@ OperatorStencil<Ind3D> LaplacePetsc3dAmg::getStencil(Mesh* localmesh,
 						     RangeIterator upperYBound) {
   OperatorStencil<Ind3D> stencil;
 
+BOUT_OMP(critical(LaplacePetsc3dAmgGetStencil))
+{
   // Get the pattern used for interpolation. This is assumed to be the
   // same across the whole grid.
   const auto pw = localmesh->getCoordinates()->getParallelTransform().getWeightsForYDownApproximation(localmesh->xstart, localmesh->ystart + 1, localmesh->zstart);
@@ -520,6 +522,9 @@ OperatorStencil<Ind3D> LaplacePetsc3dAmg::getStencil(Mesh* localmesh,
     }
     upperEdgeStencil.insert(i);
   }
+  output<<"interiorStencil "<<interiorStencil.size()<<endl;
+  output<<"lowerEdgeStencil "<<lowerEdgeStencil.size()<<endl;
+  output<<"upperEdgeStencil "<<upperEdgeStencil.size()<<endl;
   const std::vector<OffsetInd3D> interiorStencilVector(interiorStencil.begin(), interiorStencil.end()),
     lowerEdgeStencilVector(lowerEdgeStencil.begin(), lowerEdgeStencil.end()),
     upperEdgeStencilVector(upperEdgeStencil.begin(), upperEdgeStencil.end());
@@ -583,6 +588,7 @@ OperatorStencil<Ind3D> LaplacePetsc3dAmg::getStencil(Mesh* localmesh,
                 {zero, zero.xm()});
   }
 
+}
   return stencil;
 }
 

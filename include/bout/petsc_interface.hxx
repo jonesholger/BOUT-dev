@@ -228,6 +228,7 @@ private:
       numDiagonal[getGlobal(i) - globalStart] = stencils.getStencilSize(i);
       if (getGlobal(i) - globalStart==2016) {
         output<<"calculateSparsity "<<numDiagonal[getGlobal(i) - globalStart]<<" "<<stencils.getStencilSize(i)<<endl;
+        output<<"i.ind="<<i.ind<<endl;
       }
     }
 

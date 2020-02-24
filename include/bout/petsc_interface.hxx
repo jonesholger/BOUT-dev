@@ -179,6 +179,7 @@ public:
 
   const std::vector<int>& getNumDiagonal() const {
     ASSERT2(sparsityPatternAvailable());
+    BOUT_OMP(critical(PetscCalculateSparsity))
     if (!sparsityCalculated) {
       calculateSparsity();
     }
@@ -187,6 +188,7 @@ public:
 
   const std::vector<int>& getNumOffDiagonal() const {
     ASSERT2(sparsityPatternAvailable());
+    BOUT_OMP(critical(PetscCalculateSparsity))
     if (!sparsityCalculated) {
       calculateSparsity();
     }

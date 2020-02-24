@@ -226,6 +226,9 @@ private:
     // Set initial guess for number of on-diagonal elements
     BOUT_FOR_SERIAL(i, regionAll) {
       numDiagonal[getGlobal(i) - globalStart] = stencils.getStencilSize(i);
+      if (getGlobal(i) - globalStart==2016) {
+        output<<"calculateSparsity "<<numDiagonal[getGlobal(i) - globalStart]<<" "<<stencils.getStencilSize(i)<<endl;
+      }
     }
 
     BOUT_FOR_SERIAL(i, indices.getRegion("RGN_GUARDS")) {
@@ -235,6 +238,9 @@ private:
             const int n = getGlobal(j) - globalStart;
             numDiagonal[n] -= 1;
             numOffDiagonal[n] += 1;
+            if (n==2016) {
+              output<<"calculateSparsity guards "<<n<<" "<<numDiagonal[n]<<" "<<stencils.getStencilSize(n)<<endl;
+            }
           }
         }
       }

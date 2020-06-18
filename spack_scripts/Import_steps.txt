@@ -1,0 +1,23 @@
+Create config_umpire_raja_BOUT.sh
+
+Important config file for umpire, raja and BOUT-dev. Mush confirm right tags like below:
+1. for raja
+
+$cd ~/workspace
+$git clone --recursive https://github.com/llnl/raja.git
+$cd raja 
+$git fetch --all --tags
+$git checkout tags/v0.11.0 -b v0.11.0-branch
+$git submodule init //  $git submodule init && git submodule update
+$git submodule
+$git submodule update
+$~/workspace/BOUT-dev/scripts-config/config_umpire_raja_BOUT.sh raja
+
+2. umpire
+$cd ~/workspace
+$cd Umpire
+$git checkout tags/v2.1.0 -b v2.1.0-branch
+$git submodule init 
+$submodule update
+$git submodule
+$~/workspace/BOUT-dev/scripts-config/config_umpire_raja_BOUT.sh umpire

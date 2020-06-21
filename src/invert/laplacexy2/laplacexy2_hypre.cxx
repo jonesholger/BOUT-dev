@@ -51,7 +51,7 @@ LaplaceXY2Hypre::LaplaceXY2Hypre(Mesh* m, Options* opt, const CELL_LOC loc)
 
   // Declare KSP Context
   HYPRE_Init();
-  //hypre_HandleDefaultExecPolicy(hypre_handle()) = HYPRE_EXEC_DEVICE;
+  hypre_HandleDefaultExecPolicy(hypre_handle()) = HYPRE_EXEC_DEVICE;
   //hypre_HandleDefaultExecPolicy(hypre_handle()) = HYPRE_EXEC_HOST;
 
   matrix = new bout::HypreMatrix<Field2D>(f2dinit);
@@ -147,7 +147,7 @@ void LaplaceXY2Hypre::setCoefs(const Field2D& A, const Field2D& B) {
   HYPRE_BigInt *manI, *manXP, *manXM, *manYP, *manYM, *one;
   HYPRE_Complex *manV;
 
-#if 1
+#if 0
   cudaMallocManaged(&manI, sizeof(HYPRE_BigInt));
   cudaMallocManaged(&manXP, sizeof(HYPRE_BigInt));
   cudaMallocManaged(&manXM, sizeof(HYPRE_BigInt));
@@ -206,7 +206,7 @@ void LaplaceXY2Hypre::setCoefs(const Field2D& A, const Field2D& B) {
     manV[0] = xp;
     //std::cout << one[0] << ", " << manI[0] << ", " << manXP[0] << ", " << manV[0] << std::endl;
     HYPRE_IJMatrixSetValues(ij_matrix, 1, one, manI, manXP, manV);
-    //std::cout << "matrix(index, ind_xp) = xp" << std::endl;
+    std::cout << "matrix(index, ind_xp) = xp" << std::endl;
 
     manV[0] = xm;
     HYPRE_IJMatrixSetValues(ij_matrix, 1, one, manI, manXM, manV); 
@@ -381,7 +381,7 @@ void LaplaceXY2Hypre::setCoefs(const Field2D& A, const Field2D& B) {
   dur = end-start;  //AARON
   std::cout << "*****Matrix prec time:  " << dur.count() << std::endl;
   gpuErrchk( cudaPeekAtLastError() );
-#if 1
+#if 0
   gpuErrchk(cudaFree(manI) );
   gpuErrchk(cudaFree(manXP) );
   gpuErrchk(cudaFree(manXM) );
@@ -437,7 +437,7 @@ const Field2D LaplaceXY2Hypre::solve(const Field2D& rhs, const Field2D& x0) {
 
   HYPRE_BigInt *manI;
   HYPRE_Complex *manV;
-#if 1
+#if 0
   cudaMallocManaged(&manI, sizeof(HYPRE_BigInt));
   cudaMallocManaged(&manV, sizeof(HYPRE_Complex));
 #else
@@ -563,7 +563,7 @@ const Field2D LaplaceXY2Hypre::solve(const Field2D& rhs, const Field2D& x0) {
     }
   }
   gpuErrchk( cudaPeekAtLastError() );
-#if 1
+#if 0
   gpuErrchk(cudaFree(manI) );
   gpuErrchk(cudaFree(manV) );  
 #else

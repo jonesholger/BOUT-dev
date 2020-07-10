@@ -206,7 +206,7 @@ void LaplaceXY2Hypre::setCoefs(const Field2D& A, const Field2D& B) {
     manV[0] = xp;
     //std::cout << one[0] << ", " << manI[0] << ", " << manXP[0] << ", " << manV[0] << std::endl;
     HYPRE_IJMatrixSetValues(ij_matrix, 1, one, manI, manXP, manV);
-    std::cout << "matrix(index, ind_xp) = xp" << std::endl;
+    //std::cout << "matrix(index, ind_xp) = xp" << std::endl;
 
     manV[0] = xm;
     HYPRE_IJMatrixSetValues(ij_matrix, 1, one, manI, manXM, manV); 

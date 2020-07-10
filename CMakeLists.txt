@@ -397,9 +397,6 @@ blt_register_library(
 
 
 set_target_properties(bout++ PROPERTIES LINKER_LANGUAGE CXX)
-#add_library(bout++
-#  ${BOUT_SOURCES}
-#  )
 
 add_library(bout++::bout++ ALIAS bout++)
 target_link_libraries(bout++ PUBLIC MPI::MPI_CXX mpark_variant)
@@ -417,8 +414,6 @@ target_compile_definitions(bout++
 # todo start using BOUT_config.h
 if(BOUT_HAS_HYPRE)
    target_compile_definitions(bout++ PUBLIC "BOUT_HAS_HYPRE")
-   #add_subdirectory(src/invert/laplacexy2)
-   #target_link_libraries(bout++ PUBLIC LaplaceXY2Hypre)
 endif ()
 
 if(BOUT_HAS_PETSC)
@@ -672,17 +667,6 @@ if (USE_NLS)
   endif()
 endif()
 set(BOUT_HAS_GETTEXT ${USE_NLS})
-
-#option(USE_HYPRE "Enable support for HYPRE" OFF)
-#if (USE_HYPRE)
-#  enable_language(C)
-#  find_package(HYPRE REQUIRED)
-#  target_compile_definitions(bout++
-#    PUBLIC "BOUT_HAS_HYPRE")
-#  target_link_libraries(bout++ PUBLIC HYPRE::HYPRE)
-#endif()
-#message(STATUS "HYPRE support: ${USE_HYPRE}")
-#set(BOUT_HAS_HYPRE ${USE_HYPRE})
 
 option(USE_SCOREP "Enable support for Score-P based instrumentation" OFF)
 if (USE_SCOREP)

@@ -6,8 +6,8 @@
 	url = https://github.com/mpark/variant.git
 [submodule "externalpackages/fmt"]
 	path = externalpackages/fmt
-	url = https://github.com/fmtlib/fmt.git
+   url = https://github.com/fmtlib/fmt.git
 [submodule "blt"]
 	path = blt
-      url = https://github.com/LLNL/blt
-      branch = release-v0.3.0
+   url = https://github.com/LLNL/blt
+   branch = release-v0.3.0

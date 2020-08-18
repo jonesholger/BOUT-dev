@@ -104,24 +104,23 @@ public:
    * The solution as a Field2D. On failure an exception will be raised
    *
    */
-  const Field2D solve(const Field2D& rhs, const Field2D& x0);
+   Field2D solve(Field2D& rhs, Field2D& x0);
 
   /*!
    * Preconditioner function
    * This is called by Hypre via a static function.
    * and should not be called by external users
    */
-  int precon(HYPRE_IJVector x, HYPRE_IJVector y);
+  //int precon(HYPRE_IJVector x, HYPRE_IJVector y);
 
 private:
   Mesh* localmesh; ///< The mesh this operates on, provides metrics and communication
   Field2D f2dinit;                   ///< This is here just to initialise matrix
   IndexerPtr indexConverter;
-  bout::HypreMatrix<Field2D> *matrix; ///< Matrix to be inverted
-  HYPRE_Solver solver;               ///< Solver
-  HYPRE_IJMatrix ij_matrix;
-  HYPRE_ParCSRMatrix parcsr_matrix;
-
+  bout::HypreMatrix<Field2D> *M;
+  bout::HypreVector<Field2D> *x;
+  bout::HypreVector<Field2D> *b;
+  bout::HypreSystem<Field2D> *linearSystem;
 
   // Y derivatives
   bool include_y_derivs; // Include Y derivative terms?

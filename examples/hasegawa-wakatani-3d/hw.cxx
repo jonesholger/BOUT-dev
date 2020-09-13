@@ -2,7 +2,7 @@
 //// This version uses indexed operators
 //// which reduce the number of loops over the domain
 ////  Profiling markers and ranges are set if USE_NVTX is defined
-////  Baesed on Ben Duddson, Steven Glenn code, Yining Qin update 0521-2020
+////  Baesed on Ben Duddson, Steven Glenn code, Yining Qin  and  Holger Jones update from 0521-2020
 ////  GPU processing is enabled if BOUT_ENABLE_CUDA is defined
 
 #include <iostream>
